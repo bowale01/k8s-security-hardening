@@ -419,7 +419,7 @@ Backup & DR
 - **20+ Policies**: Automated enforcement
 - **10 Security Layers**: Defense-in-depth
 - **~$350/month**: Cost-optimized
-- **15-20 minutes**: Full deployment time
+- **3hours**: Full deployment time
 - **One command**: Complete teardown
 
 ## Common Pitfalls to Avoid
