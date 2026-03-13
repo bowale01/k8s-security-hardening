@@ -1,0 +1,94 @@
+# Advanced Audit Policy for CIS 3.2.x compliance
+apiVersion: audit.k8s.io/v1
+kind: Policy
+metadata:
+  name: advanced-audit-policy
+rules:
+  # CIS 3.2.1: Log all requests at Metadata level
+  - level: Metadata
+    omitStages:
+      - RequestReceived
+    
+  # Log pod changes at Request level
+  - level: Request
+    resources:
+    - group: ""
+      resources: ["pods"]
+    verbs: ["create", "update", "patch", "delete"]
+    
+  # Log secret access at Metadata level (don't log secret data)
+  - level: Metadata
+    resources:
+    - group: ""
+      resources: ["secrets"]
+    
+  # Log configmap changes
+  - level: Request
+    resources:
+    - group: ""
+      resources: ["configmaps"]
+    verbs: ["create", "update", "patch", "delete"]
+    
+  # Log RBAC changes at RequestResponse level
+  - level: RequestResponse
+    resources:
+    - group: "rbac.authorization.k8s.io"
+      resources: ["clusterroles", "clusterrolebindings", "roles", "rolebindings"]
+    
+  # Log authentication and authorization failures
+  - level: Metadata
+    omitStages:
+      - RequestReceived
+    users: ["system:anonymous"]
+    
+  # Log all requests to sensitive resources
+  - level: RequestResponse
+    resources:
+    - group: "certificates.k8s.io"
+    - group: "policy"
+      resources: ["podsecuritypolicies"]
+    - group: "networking.k8s.io"
+      resources: ["networkpolicies"]
+    
+  # Log exec and attach commands
+  - level: Request
+    verbs: ["exec", "attach"]
+    resources:
+    - group: ""
+      resources: ["pods/exec", "pods/attach"]
+    
+  # Log service account token requests
+  - level: Metadata
+    resources:
+    - group: ""
+      resources: ["serviceaccounts/token"]
+    
+  # Don't log read-only requests to certain resources
+  - level: None
+    verbs: ["get", "list", "watch"]
+    resources:
+    - group: ""
+      resources: ["events"]
+    
+  # Don't log health checks
+  - level: None
+    users: ["system:kube-proxy"]
+    verbs: ["watch"]
+    resources:
+    - group: ""
+      resources: ["endpoints", "services"]
+    
+  # Don't log controller manager health checks
+  - level: None
+    users: ["system:kube-controller-manager"]
+    verbs: ["get", "list"]
+    
+  # Don't log scheduler health checks
+  - level: None
+    users: ["system:kube-scheduler"]
+    verbs: ["get", "list"]
+    
+  # Catch-all rule
+  - level: Metadata
+    omitStages:
+      - RequestReceived

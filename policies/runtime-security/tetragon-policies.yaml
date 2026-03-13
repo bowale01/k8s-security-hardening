@@ -1,0 +1,108 @@
+# Advanced Runtime Security with Tetragon (eBPF-based)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tetragon
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: tetragon
+  namespace: kube-system
+spec:
+  repo: https://helm.cilium.io
+  chart: tetragon
+  targetNamespace: tetragon
+  valuesContent: |-
+    tetragon:
+      enabled: true
+      grpc:
+        enabled: true
+        address: "localhost:54321"
+    tetragonOperator:
+      enabled: true
+---
+# TracingPolicy for detecting privilege escalation
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: detect-privilege-escalation
+  namespace: tetragon
+spec:
+  kprobes:
+  - call: "security_capset"
+    syscall: false
+    args:
+    - index: 0
+      type: "nop"
+    - index: 1
+      type: "cap_inheritable"
+    - index: 2
+      type: "cap_permitted"
+    - index: 3
+      type: "cap_effective"
+    selectors:
+    - matchArgs:
+      - index: 2
+        operator: "NotEqual"
+        values:
+        - "0"
+      matchActions:
+      - action: Sigkill
+---
+# TracingPolicy for detecting container escapes
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: detect-container-escape
+  namespace: tetragon
+spec:
+  kprobes:
+  - call: "do_mount"
+    syscall: false
+    args:
+    - index: 0
+      type: "string"
+    - index: 1
+      type: "string"
+    - index: 2
+      type: "string"
+    selectors:
+    - matchArgs:
+      - index: 1
+        operator: "Equal"
+        values:
+        - "/proc"
+        - "/sys"
+        - "/dev"
+      matchActions:
+      - action: Post
+---
+# TracingPolicy for detecting crypto mining
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: detect-crypto-mining
+  namespace: tetragon
+spec:
+  kprobes:
+  - call: "tcp_connect"
+    syscall: false
+    args:
+    - index: 0
+      type: "sock"
+    selectors:
+    - matchArgs:
+      - index: 0
+        operator: "DPort"
+        values:
+        - "3333"  # Common mining pool port
+        - "4444"
+        - "5555"
+        - "7777"
+        - "8888"
+        - "9999"
+      matchActions:
+      - action: Sigkill

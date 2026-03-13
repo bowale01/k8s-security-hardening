@@ -1,0 +1,66 @@
+# OWASP K01: Insecure Workload Configurations
+# CIS 5.2.7: Minimize the admission of containers with capabilities
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-capabilities
+  annotations:
+    policies.kyverno.io/title: Restrict Capabilities
+    policies.kyverno.io/category: Pod Security Standards (Restricted)
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Containers should drop all capabilities and only add specific ones if needed.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-drop-all
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Containers must drop ALL capabilities"
+        pattern:
+          spec:
+            =(ephemeralContainers):
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL
+            =(initContainers):
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL
+            containers:
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL
+    - name: restrict-added-capabilities
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Only NET_BIND_SERVICE capability can be added"
+        pattern:
+          spec:
+            =(ephemeralContainers):
+              - =(securityContext):
+                  =(capabilities):
+                    =(add):
+                      - NET_BIND_SERVICE
+            =(initContainers):
+              - =(securityContext):
+                  =(capabilities):
+                    =(add):
+                      - NET_BIND_SERVICE
+            containers:
+              - =(securityContext):
+                  =(capabilities):
+                    =(add):
+                      - NET_BIND_SERVICE

@@ -1,0 +1,51 @@
+# ============================================================================
+# RBAC: Least Privilege Role Example
+# ============================================================================
+# What this does:
+# Creates a role with minimal permissions - only read access to pods.
+# This is an example of least-privilege access control.
+#
+# Why this matters:
+# Most applications don't need cluster-admin. Give them only what they need.
+# This limits damage if the application is compromised.
+#
+# OWASP K03: Overly Permissive RBAC
+# CIS Control: 5.1.1 - Minimize cluster-admin role usage
+#
+# Real-world example:
+# A monitoring application needs to:
+# - Read pod status ✅ (allowed by this role)
+# - Delete pods ❌ (not allowed)
+# - Modify secrets ❌ (not allowed)
+# - Access other namespaces ❌ (not allowed)
+#
+# If the monitoring app is compromised, attacker can only read pod info,
+# not modify or delete anything.
+#
+# This is the principle of least privilege in action.
+# ============================================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-reader
+  namespace: default
+  annotations:
+    description: "OWASP K03: Least privilege RBAC - read-only access to pods"
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-pods
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pod-reader
+subjects:
+- kind: ServiceAccount
+  name: app-service-account
+  namespace: default

@@ -1,0 +1,83 @@
+# gVisor Runtime Class for Container Sandboxing
+# Provides additional isolation layer between containers and host kernel
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: gvisor
+handler: runsc
+---
+# Example pod using gVisor sandbox
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sandboxed-pod-example
+  namespace: default
+  annotations:
+    description: "Example of pod running in gVisor sandbox for enhanced security"
+spec:
+  runtimeClassName: gvisor
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: app
+    image: nginx:1.25
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+        - ALL
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+    volumeMounts:
+    - name: cache
+      mountPath: /var/cache/nginx
+    - name: run
+      mountPath: /var/run
+  volumes:
+  - name: cache
+    emptyDir: {}
+  - name: run
+    emptyDir: {}
+---
+# DaemonSet to install gVisor on all nodes
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gvisor-installer
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      name: gvisor-installer
+  template:
+    metadata:
+      labels:
+        name: gvisor-installer
+    spec:
+      hostPID: true
+      hostNetwork: true
+      initContainers:
+      - name: installer
+        image: gcr.io/gvisor-presubmit/gvisor-installer:latest
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: host-root
+          mountPath: /host
+      containers:
+      - name: pause
+        image: gcr.io/google_containers/pause:3.9
+      volumes:
+      - name: host-root
+        hostPath:
+          path: /

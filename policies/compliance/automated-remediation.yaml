@@ -1,0 +1,96 @@
+# Automated Compliance Remediation
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: compliance-remediation
+  namespace: security-tools
+  annotations:
+    description: "Automated remediation of common compliance violations"
+spec:
+  schedule: "*/30 * * * *"  # Every 30 minutes
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: compliance-remediation
+        spec:
+          serviceAccountName: compliance-remediation
+          containers:
+          - name: remediation
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/bash
+            - -c
+            - |
+              #!/bin/bash
+              set -e
+              
+              echo "Starting compliance remediation..."
+              
+              # CIS 5.1.5: Ensure default service accounts are not actively used
+              echo "Disabling default service accounts..."
+              for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'); do
+                kubectl patch serviceaccount default -n $ns -p '{"automountServiceAccountToken":false}' || true
+              done
+              
+              # CIS 5.7.3: Apply Security Context to Namespaces
+              echo "Applying Pod Security Standards to namespaces..."
+              for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'); do
+                if [[ "$ns" != "kube-system" && "$ns" != "kube-public" && "$ns" != "kube-node-lease" ]]; then
+                  kubectl label namespace $ns pod-security.kubernetes.io/enforce=restricted --overwrite || true
+                  kubectl label namespace $ns pod-security.kubernetes.io/audit=restricted --overwrite || true
+                  kubectl label namespace $ns pod-security.kubernetes.io/warn=restricted --overwrite || true
+                fi
+              done
+              
+              # Remove pods without resource limits
+              echo "Checking for pods without resource limits..."
+              kubectl get pods --all-namespaces -o json | \
+              jq -r '.items[] | select(.spec.containers[].resources.limits == null) | "\(.metadata.namespace)/\(.metadata.name)"' | \
+              while read pod; do
+                echo "WARNING: Pod $pod has no resource limits"
+              done
+              
+              # Check for privileged pods
+              echo "Checking for privileged pods..."
+              kubectl get pods --all-namespaces -o json | \
+              jq -r '.items[] | select(.spec.containers[].securityContext.privileged == true) | "\(.metadata.namespace)/\(.metadata.name)"' | \
+              while read pod; do
+                echo "CRITICAL: Privileged pod found: $pod"
+                # Optionally delete or alert
+              done
+              
+              echo "Compliance remediation complete"
+          restartPolicy: OnFailure
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: compliance-remediation
+  namespace: security-tools
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: compliance-remediation
+rules:
+- apiGroups: [""]
+  resources: ["namespaces", "serviceaccounts", "pods"]
+  verbs: ["get", "list", "patch", "update"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets", "daemonsets"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: compliance-remediation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: compliance-remediation
+subjects:
+- kind: ServiceAccount
+  name: compliance-remediation
+  namespace: security-tools

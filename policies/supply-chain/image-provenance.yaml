@@ -1,0 +1,90 @@
+# Image Provenance and Attestation
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-provenance
+  annotations:
+    policies.kyverno.io/title: Verify Image Provenance
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      OWASP K02: Verify images have valid provenance attestations.
+      NIST 800-190: Validate build provenance.
+spec:
+  validationFailureAction: enforce
+  background: false
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: check-provenance
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      verifyImages:
+      - imageReferences:
+        - "*"
+        attestations:
+        - predicateType: https://slsa.dev/provenance/v0.2
+          attestors:
+          - count: 1
+            entries:
+            - keys:
+                publicKeys: |-
+                  -----BEGIN PUBLIC KEY-----
+                  # Add your SLSA provenance signing key here
+                  -----END PUBLIC KEY-----
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-image-digest
+  annotations:
+    policies.kyverno.io/title: Require Image Digest
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      OWASP K02: Require images to be referenced by digest, not tag.
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: require-digest
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Images must be referenced by digest (sha256:...), not by tag"
+        pattern:
+          spec:
+            containers:
+            - image: "*@sha256:*"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: allowed-registries
+  annotations:
+    policies.kyverno.io/title: Allowed Image Registries
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      OWASP K02: Only allow images from trusted registries.
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: validate-registries
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Images must come from approved registries: ECR, GCR, or internal registry"
+        pattern:
+          spec:
+            containers:
+            - image: "*.dkr.ecr.*.amazonaws.com/* | gcr.io/* | registry.internal.company.com/*"

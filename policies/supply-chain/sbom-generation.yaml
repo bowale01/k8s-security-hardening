@@ -1,0 +1,93 @@
+# Supply Chain Security - SBOM Generation
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sbom-generator
+  namespace: security-tools
+  annotations:
+    description: "OWASP K02: Generate Software Bill of Materials for all images"
+spec:
+  schedule: "0 3 * * *"  # Daily at 3 AM
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: sbom-generator
+        spec:
+          serviceAccountName: sbom-generator
+          containers:
+          - name: syft
+            image: anchore/syft:latest
+            command:
+            - /bin/sh
+            - -c
+            - |
+              #!/bin/sh
+              set -e
+              
+              echo "Generating SBOMs for all container images in cluster..."
+              
+              # Get all images from all pods
+              kubectl get pods --all-namespaces -o jsonpath="{.items[*].spec.containers[*].image}" | \
+              tr -s '[[:space:]]' '\n' | \
+              sort | \
+              uniq | \
+              while read image; do
+                echo "Processing: $image"
+                syft packages "$image" -o cyclonedx-json > "/sbom/$(echo $image | tr '/:' '_').json" || true
+              done
+              
+              echo "SBOM generation complete"
+            volumeMounts:
+            - name: sbom-storage
+              mountPath: /sbom
+            - name: kubeconfig
+              mountPath: /root/.kube
+          restartPolicy: OnFailure
+          volumes:
+          - name: sbom-storage
+            persistentVolumeClaim:
+              claimName: sbom-storage
+          - name: kubeconfig
+            emptyDir: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sbom-generator
+  namespace: security-tools
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: sbom-generator
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: sbom-generator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: sbom-generator
+subjects:
+- kind: ServiceAccount
+  name: sbom-generator
+  namespace: security-tools
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sbom-storage
+  namespace: security-tools
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

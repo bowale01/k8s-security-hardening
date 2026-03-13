@@ -1,0 +1,51 @@
+# ============================================================================
+# KYVERNO POLICY: Disallow Privileged Containers
+# ============================================================================
+# What this does:
+# Blocks any pod that tries to run in privileged mode.
+#
+# Why this matters:
+# Privileged containers can access the host kernel and escape the container.
+# This is one of the most dangerous misconfigurations.
+#
+# CIS Control: 5.2.1 - Minimize admission of privileged containers
+# OWASP K01: Insecure Workload Configurations
+#
+# Real-world impact:
+# An attacker who compromises a privileged container can:
+# - Access all host devices
+# - Load kernel modules
+# - Escape to the host system
+# - Compromise the entire node
+#
+# This policy prevents that attack vector entirely.
+# ============================================================================
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-privileged-containers
+  annotations:
+    policies.kyverno.io/title: Disallow Privileged Containers
+    policies.kyverno.io/category: Pod Security Standards (Baseline)
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      OWASP K01: Privileged mode disables most security mechanisms.
+      CIS 5.2.1: Minimize the admission of privileged containers.
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: privileged-containers
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Privileged mode is not allowed."
+        pattern:
+          spec:
+            containers:
+            - =(securityContext):
+                =(privileged): false

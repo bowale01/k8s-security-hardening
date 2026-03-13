@@ -1,0 +1,55 @@
+# ============================================================================
+# KYVERNO POLICY: Require Resource Limits
+# ============================================================================
+# What this does:
+# Requires every container to specify CPU and memory limits/requests.
+#
+# Why this matters:
+# Without limits, a single pod can consume all node resources, causing
+# denial of service for other applications.
+#
+# CIS Control: 5.2.13 - Ensure containers have resource limits
+# OWASP K01: Insecure Workload Configurations
+#
+# Real-world impact:
+# - Prevents resource exhaustion attacks
+# - Ensures fair resource sharing
+# - Enables proper capacity planning
+# - Protects against memory leaks
+#
+# Example attack prevented:
+# Attacker deploys crypto miner → tries to use 100% CPU → blocked by limits
+# ============================================================================
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+  annotations:
+    policies.kyverno.io/title: Require Resource Limits
+    policies.kyverno.io/category: Resource Management
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      OWASP K01: Prevent resource exhaustion attacks.
+      CIS 5.2.13: Ensure that containers have resource limits set.
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: require-cpu-memory-limits
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "CPU and memory limits are required."
+        pattern:
+          spec:
+            containers:
+            - resources:
+                limits:
+                  memory: "?*"
+                  cpu: "?*"
+                requests:
+                  memory: "?*"
+                  cpu: "?*"

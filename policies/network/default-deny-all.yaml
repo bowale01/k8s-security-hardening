@@ -1,0 +1,58 @@
+# ============================================================================
+# NETWORK POLICY: Default Deny All
+# ============================================================================
+# What this does:
+# Blocks ALL network traffic (ingress and egress) by default.
+# Traffic must be explicitly allowed by other network policies.
+#
+# Why this matters:
+# Zero-trust networking - nothing can communicate unless explicitly allowed.
+# This is the foundation of network segmentation.
+#
+# OWASP K07: Missing Network Segmentation Controls
+# CIS Control: 5.3.1 - Ensure network policies are applied
+#
+# Real-world impact:
+# If an attacker compromises a pod:
+# - Can't scan the network for other services
+# - Can't move laterally to other pods
+# - Can't exfiltrate data to external servers
+# - Is effectively isolated
+#
+# This policy implements "deny by default, allow by exception" principle.
+# ============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: default
+  annotations:
+    description: "OWASP K07: Default deny all ingress and egress traffic"
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: default
+  annotations:
+    description: "Allow DNS queries to kube-dns"
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    - podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53

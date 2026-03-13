@@ -1,0 +1,51 @@
+# ============================================================================
+# KYVERNO POLICY: Require Non-Root User
+# ============================================================================
+# What this does:
+# Forces all containers to run as a non-root user (UID > 0).
+#
+# Why this matters:
+# Running as root inside a container gives attackers more power if they
+# break out. Non-root limits damage even if container is compromised.
+#
+# CIS Control: 5.2.6 - Ensure containers run as non-root
+# OWASP K01: Insecure Workload Configurations
+#
+# Real-world impact:
+# If an attacker exploits a vulnerability in your app:
+# - As root: Can modify system files, install malware, escalate privileges
+# - As non-root: Limited to app-level access, can't modify system
+#
+# This policy enforces the principle of least privilege.
+# ============================================================================
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-non-root
+  annotations:
+    policies.kyverno.io/title: Require Non-Root User
+    policies.kyverno.io/category: Pod Security Standards (Restricted)
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      OWASP K01: Containers must run as non-root users.
+      CIS 5.2.6: Ensure that the container is not running as root.
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: run-as-non-root
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Running as root is not allowed. Set runAsNonRoot to true."
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true
+            containers:
+            - securityContext:
+                runAsNonRoot: true

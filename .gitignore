@@ -1,0 +1,142 @@
+# ============================================================================
+# GITIGNORE - Prevent Sensitive Information from Being Committed
+# ============================================================================
+# This file ensures no credentials, keys, or sensitive data goes to GitHub
+# ============================================================================
+
+# Terraform State Files (CONTAINS SENSITIVE DATA)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform.lock.hcl
+tfplan
+tfplan.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Terraform Variable Files (MAY CONTAIN CREDENTIALS)
+*.tfvars
+*.tfvars.json
+!terraform.tfvars.example
+!*.example.tfvars
+
+# Kubernetes Config Files (CONTAINS CLUSTER CREDENTIALS)
+kubeconfig
+*.kubeconfig
+.kube/
+config
+*.conf
+
+# AWS Credentials (NEVER COMMIT)
+.aws/
+credentials
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# SSH Keys (NEVER COMMIT)
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+*.ppk
+
+# Secrets and Certificates (NEVER COMMIT)
+secrets/
+*.secret
+*.password
+*.token
+.env
+.env.*
+!.env.example
+
+# Backup Files (MAY CONTAIN SENSITIVE DATA)
+*.backup
+*.bak
+*.old
+*.orig
+*~
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Log Files (MAY CONTAIN SENSITIVE DATA)
+*.log
+logs/
+*.log.*
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Build Artifacts
+dist/
+build/
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Python (if using Python scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+ENV/
+
+# Node.js (if using Node scripts)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Compliance Reports (MAY CONTAIN INTERNAL INFO)
+*-report.txt
+*-report.json
+*-report.yaml
+compliance-*.txt
+audit-*.txt
+
+# Personal Notes (KEEP PRIVATE)
+NOTES.md
+TODO.md
+PRIVATE.md
+personal/
+
+# Test Data (MAY CONTAIN SENSITIVE INFO)
+test-data/
+*.test
+
+# Generated Files
+generated/
+output/
