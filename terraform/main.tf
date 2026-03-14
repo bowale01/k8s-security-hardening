@@ -154,8 +154,9 @@ module "guardduty" {
 module "monitoring" {
   source = "./modules/monitoring"
 
-  cluster_name = var.cluster_name
-  environment  = var.environment
+  cluster_name           = var.cluster_name
+  environment            = var.environment
+  grafana_admin_password = var.grafana_admin_password
 
   depends_on = [module.eks]
 }
@@ -215,6 +216,8 @@ module "identity" {
 
   cluster_name            = var.cluster_name
   cluster_oidc_issuer_url = module.eks.cluster_oidc_issuer_url
+  oidc_provider_arn       = module.eks.oidc_provider_arn
+  oidc_provider_url       = module.eks.oidc_provider_url
   admin_group_name        = var.oidc_admin_group
   developer_group_name    = var.oidc_developer_group
   auditor_group_name      = var.oidc_auditor_group

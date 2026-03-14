@@ -161,3 +161,9 @@ variable "waf_rate_limit" {
   type        = number
   default     = 2000
 }
+
+variable "grafana_admin_password" {
+  description = "Grafana admin dashboard password - keep this secret, never commit to git"
+  type        = string
+  sensitive   = true
+}

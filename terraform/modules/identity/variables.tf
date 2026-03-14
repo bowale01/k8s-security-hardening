@@ -4,7 +4,17 @@ variable "cluster_name" {
 }
 
 variable "cluster_oidc_issuer_url" {
-  description = "EKS cluster OIDC issuer URL"
+  description = "EKS cluster OIDC issuer URL (full URL with https://)"
+  type        = string
+}
+
+variable "oidc_provider_arn" {
+  description = "ARN of the OIDC provider (created in EKS module)"
+  type        = string
+}
+
+variable "oidc_provider_url" {
+  description = "OIDC provider URL without https:// prefix"
   type        = string
 }
 

@@ -140,14 +140,22 @@ resource "kubernetes_manifest" "secret_store" {
   ]
 }
 
+# Package the Lambda source into a zip at plan time (no pre-built zip needed)
+data "archive_file" "secrets_rotation" {
+  type        = "zip"
+  source_file = "${path.module}/lambda/index.py"
+  output_path = "${path.module}/lambda/secrets-rotation.zip"
+}
+
 # Secrets rotation Lambda
 resource "aws_lambda_function" "secrets_rotation" {
-  filename      = "${path.module}/lambda/secrets-rotation.zip"
-  function_name = "${var.cluster_name}-secrets-rotation"
-  role          = aws_iam_role.lambda_rotation.arn
-  handler       = "index.handler"
-  runtime       = "python3.11"
-  timeout       = 30
+  filename         = data.archive_file.secrets_rotation.output_path
+  source_code_hash = data.archive_file.secrets_rotation.output_base64sha256
+  function_name    = "${var.cluster_name}-secrets-rotation"
+  role             = aws_iam_role.lambda_rotation.arn
+  handler          = "index.handler"
+  runtime          = "python3.11"
+  timeout          = 30
 
   environment {
     variables = {

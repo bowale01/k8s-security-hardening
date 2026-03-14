@@ -19,3 +19,20 @@ node_max_size       = 4
 enable_guardduty = true
 enable_falco     = true
 enable_kyverno   = true
+
+# Optional Features (set to false to reduce cost)
+enable_service_mesh     = true
+enable_external_secrets = true
+enable_backup           = true
+enable_oidc_provider    = true
+enable_waf              = true
+
+# WAF Configuration
+waf_rate_limit      = 2000
+enable_geo_blocking = false
+blocked_countries   = []
+
+# Grafana Dashboard Password
+# IMPORTANT: Set this via environment variable instead of hardcoding here:
+#   export TF_VAR_grafana_admin_password="your-strong-password"
+# grafana_admin_password = "CHANGE_ME_DO_NOT_COMMIT"

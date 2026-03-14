@@ -23,20 +23,8 @@
 # All access is logged for compliance audits.
 # ============================================================================
 
-# OIDC Identity Provider for SSO
-resource "aws_iam_openid_connect_provider" "cluster" {
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = [data.tls_certificate.cluster.certificates[0].sha1_fingerprint]
-  url             = var.cluster_oidc_issuer_url
-
-  tags = {
-    Name = "${var.cluster_name}-oidc-provider"
-  }
-}
-
-data "tls_certificate" "cluster" {
-  url = var.cluster_oidc_issuer_url
-}
+# NOTE: OIDC provider is created in the EKS module.
+# This module receives the ARN and URL as input variables to avoid duplicate resource errors.
 
 # Kubernetes RBAC for OIDC groups
 resource "kubernetes_cluster_role_binding" "oidc_admins" {
@@ -142,11 +130,11 @@ resource "aws_iam_role" "sso_admin" {
       Action = "sts:AssumeRoleWithWebIdentity"
       Effect = "Allow"
       Principal = {
-        Federated = aws_iam_openid_connect_provider.cluster.arn
+        Federated = var.oidc_provider_arn
       }
       Condition = {
         StringEquals = {
-          "${replace(var.cluster_oidc_issuer_url, "https://", "")}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
+          "${var.oidc_provider_url}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
         }
       }
     }]
